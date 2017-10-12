@@ -1,4 +1,4 @@
-object MonixUsage extends App{
+object RxUsage extends App{
 
   import rx._
 

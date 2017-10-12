@@ -1,4 +1,4 @@
-name := "MonixStudy"
+name := "ScalaRxStudy"
 
 version := "0.1"
 
