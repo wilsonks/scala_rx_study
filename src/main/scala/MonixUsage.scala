@@ -3,7 +3,6 @@
 
 import rx._
 
-import scala.collection.immutable.SortedMap
 import scala.collection.mutable.{Map => MMap}
 
 
@@ -19,11 +18,14 @@ object RxUsage extends App{
                                           "27","10","25","29","12"," 8","19","31","18"," 6","21","33","16"," 4","23","35","14"," 2")
 
 
+  val emptyspinHitsMap = Map(doubleZeroWheel.zip((0 to 38).toList.map(x => 0)).map{case (x,y) => x -> y}: _*)
+
+  println(emptyspinHitsMap)
 
   val blackNumbers = List(2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35)
-
   val redNumbers = List(1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36)
-  var spinHitsMap = Map((0 to 37).toList.zip((0 to 37).toList.map{x => 0}).map{case (x,y) => (x -> y)}: _*)
+
+  var spinHitsMap = Map((0 to 37).toList.zip((0 to 37).toList.map{x => 0}).map{case (x,y) => x -> y}: _*)
 
   val numberMap: Map[String,Int] = Map(" 0" -> 0, "00" -> 0, " 1" -> 1, " 2" -> 2, " 3" -> 3, " 4" -> 4,
                                        " 5" -> 5, " 6" -> 6, " 7" -> 7, " 8" -> 8, " 9" -> 9, "01" -> 1,
@@ -38,9 +40,18 @@ object RxUsage extends App{
   //Level 0
   val spinResults : Var[Seq[String]] = Var(Seq.empty[String])
 
-
   //Level 1
   val lastWinNumber = Rx(spinResults().headOption)
+  val doubleZeroWheelspinHits = Rx(spinResults().take(maxSpins)
+    .foldLeft(emptyspinHitsMap) {
+      case (result,"") => result
+      case (result,x) => {
+        val current = result.get(x)
+        result.updated(x,current.getOrElse(0)+1)
+        }
+      }
+  )
+
   val spinCount = Rx(spinResults().take(maxSpins).length)
   val zeroCount = Rx(spinResults().take(maxSpins).count(x => {numberMap(x) == 0}))
   val evenCount = Rx(spinResults().take(maxSpins).count(x => {(numberMap(x)%2 == 0) & (numberMap(x) != 0)}))
@@ -49,27 +60,22 @@ object RxUsage extends App{
   val blackCount = Rx(spinResults().take(maxSpins).count(x => {blackNumbers.contains(numberMap(x))}))
   val oneTo18Count = Rx(spinResults().take(maxSpins).count(x => {1 until 18 contains numberMap(x)}))
   val eighteenTo36Count = Rx(spinResults().take(maxSpins).count(x => {18 until 36 contains numberMap(x)}))
-  def hot4 = spinHitsMap.toSeq.sortBy(_._2).takeRight(4)
-  def cold4 = spinHitsMap.toSeq.sortBy(_._2).take(4)
-
+  
   //Level 2
-  val doubleZeroWheelspinHits: SortedMap[String,Int] = Rx()
-
-  spinResults.triggerLater{
-    val number = numberMap(lastWinNumber.now.getOrElse("37"))
-    val currentValue = spinHitsMap.get(numberMap(lastWinNumber.now.getOrElse("00")))
-    spinHitsMap = spinHitsMap.updated(number, currentValue.get + 1)
-    println("-->" + spinHitsMap)
-  }
-
-  //Level 2
-  val oddPercentage = Rx((100*oddCount()/spinCount()))
+  val oddPercentage = Rx((100*oddCount())/spinCount())
   val evenPercentage = Rx((100*evenCount())/spinCount())
   val zeroPercentage = Rx((100*zeroCount())/spinCount())
 
   val redPercentage = Rx((100*redCount())/spinCount())
   val blackPercentage = Rx((100*blackCount())/spinCount())
 
+  val hot4 = Rx(doubleZeroWheelspinHits().toSeq.sortBy(_._2).takeRight(4))
+  val cold4 = Rx(doubleZeroWheelspinHits().toSeq.sortBy(_._2).take(4))
+
+  spinResults.triggerLater{
+    println("-->" + doubleZeroWheelspinHits)
+  }
+  
   spinResults() = Seq(" 1")
 
   println("Hot List= " + hot4)
